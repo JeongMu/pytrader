@@ -61,11 +61,11 @@ class PyMon:
             f_score += 1
         if ys_data[ys_data.columns[2]]['부채비율'] < ys_data[ys_data.columns[1]]['부채비율']:
             f_score += 1
-        if yr_data[yr_data.columns[3]]['유동비율계산에 참여한 계정 펼치기'] > yr_data[yr_data.columns[2]]['유동비율계산에 참여한 계정 펼치기']:
+        if yr_data[yr_data.columns[3]]['유동비율계산에 참여한 계정 감추기'] > yr_data[yr_data.columns[2]]['유동비율계산에 참여한 계정 감추기']:
             f_score += 1
         if ys_data[ys_data.columns[2]]['발행주식수(보통주)'] <= ys_data[ys_data.columns[1]]['발행주식수(보통주)']:
             f_score += 1
-        if yr_data[yr_data.columns[3]]['총자산회전율계산에 참여한 계정 펼치기'] > yr_data[yr_data.columns[2]]['총자산회전율계산에 참여한 계정 펼치기']:
+        if yr_data[yr_data.columns[3]]['총자산회전율계산에 참여한 계정 감추기'] > yr_data[yr_data.columns[2]]['총자산회전율계산에 참여한 계정 감추기']:
             f_score += 1
 
         return f_score
