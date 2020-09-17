@@ -13,9 +13,11 @@ MARKET_KOSDAQ = 10
 
 class PyMon:
     def __init__(self):
+        """
         self.kiwoom = Kiwoom.Kiwoom()
         self.kiwoom.comm_connect()
         self.get_code_list()
+        """
 
         self.con_statementDB = sqlite3.connect('data/shorted_finance_statement.db')
         self.con_ratioDB = sqlite3.connect('data/finance_ratio.db')
@@ -34,6 +36,10 @@ class PyMon:
             f.write(i + ' ')
         f.close()
 
+    def check_f_score(self, score_data, target_score):
+        for i in score_data.loc:
+            return None
+
     # 매수 리스트 업데이트
     def update_buy_list(self, buy_list):
         f = open("data/buy_list.txt", "wt", encoding="UTF-8")
@@ -41,40 +47,31 @@ class PyMon:
             f.writelines("매수;" + code + ";시장가;10;0;매수전\n")
         f.close()
 
-    def check_f_score(self, code):
+    def super_value_momentum(self, dataset):
+        # cleaning dataset
+        dataset = dataset.sort_values(by=['시가총액'], axis=0)
+        dataset = dataset[:round(len(dataset) * 0.2) + 1]
+        dataset.dropna(axis=0, inplace=True)
 
-        ys_data = pd.read_sql('SELECT * FROM "%s"' % code, self.con_statementDB)
-        ys_data.set_index(ys_data.columns[0], drop=True, inplace=True)
 
-        yr_data = pd.read_sql('SELECT * FROM "%s"' % code, self.con_ratioDB)
-        yr_data.set_index(yr_data.columns[0], drop=True, inplace=True)
+        per_max = dataset['PER'].max()
 
-        f_score = 0
+        print(per_max)
 
-        if ys_data[ys_data.columns[2]]['당기순이익'] > 0:
-            f_score += 1
-        if ys_data[ys_data.columns[2]]['영업활동현금흐름'] > 0:
-            f_score += 1
-        if ys_data[ys_data.columns[2]]['ROA(%)'] > ys_data[ys_data.columns[1]]['ROA(%)']:
-            f_score += 1
-        if ys_data[ys_data.columns[2]]['영업활동현금흐름'] > ys_data[ys_data.columns[2]]['당기순이익']:
-            f_score += 1
-        if ys_data[ys_data.columns[2]]['부채비율'] < ys_data[ys_data.columns[1]]['부채비율']:
-            f_score += 1
-        if yr_data[yr_data.columns[3]]['유동비율계산에 참여한 계정 감추기'] > yr_data[yr_data.columns[2]]['유동비율계산에 참여한 계정 감추기']:
-            f_score += 1
-        if ys_data[ys_data.columns[2]]['발행주식수(보통주)'] <= ys_data[ys_data.columns[1]]['발행주식수(보통주)']:
-            f_score += 1
-        if yr_data[yr_data.columns[3]]['총자산회전율계산에 참여한 계정 감추기'] > yr_data[yr_data.columns[2]]['총자산회전율계산에 참여한 계정 감추기']:
-            f_score += 1
 
-        return f_score
+
+    def normalization(self, data):
+        pass
 
     def run(self, f_target):
         buy_list = []
-        print(self.kospi_codes)
+        # print(self.kospi_codes)
 
-        for i, code in enumerate(self.kospi_codes):
+        score_data = pd.read_excel('data/score.xlsx')
+
+        self.super_value_momentum(score_data)
+
+        """for i, code in enumerate(self.kospi_codes):
 
             f = open('data/result_data.txt', 'w', encoding="UTF-8")
             f.write(str(i) + '\n')
@@ -93,7 +90,7 @@ class PyMon:
             print(i, '/', '1564 f_score = %d' % f_score)
 
             if f_score >= f_target:
-                buy_list.append(code)
+                buy_list.append(code)"""
 
         self.update_buy_list(buy_list)
 
