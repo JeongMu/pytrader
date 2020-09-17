@@ -24,18 +24,28 @@ class CrawlFinanceStatement(CrawlData):
         table_list = self.open_browser(url)
 
         self.finance_statement = table_list[12]
+        self.price_info = table_list[1]
+        self.fundamental = table_list[5]
 
     def get_quarter_data(self):
+        # return type : Pandas Dataframe
         y_statement = self.finance_statement['분기분기컨센서스보기']
         y_statement.index = self.finance_statement[self.finance_statement.columns[0]]
 
         return y_statement
 
     def get_year_data(self):
+        # return type : Pandas Dataframe
         q_statement = self.finance_statement['연간연간컨센서스보기']
         q_statement.index = self.finance_statement[self.finance_statement.columns[0]]
 
         return q_statement
+
+    def get_price_info(self):
+        return self.price_info
+
+    def get_fundamental(self):
+        return self.fundamental
 
     @staticmethod
     def open_browser(url):
@@ -79,51 +89,62 @@ class CrawlFinanceRatio(CrawlData):
         return table_list
 
 
-def get_code_list():
-    f = open('data/kospi_code_list.txt', 'r', encoding="UTF-8")
+def get_code_list(market):
+    f = open('data/%s_code_list.txt' % market, 'r', encoding="UTF-8")
     return f.readline().split()
 
 
+def crawl(target, code_list):
+    if target == 'statement':
+        con_db = sqlite3.connect('data/shorted_finance_statement.db')
+        con_Qdb = sqlite3.connect('data/quarter_finance_statement.db')
+        con_Fdb = sqlite3.connect('data/fundamental.db')
+        con_Pdb = sqlite3.connect('data/price_info.db')
+    elif target == 'ratio':
+        con_db = sqlite3.connect('data/finance_ratio.db')
+        con_Qdb = sqlite3.connect('data/quarter_finance_ratio.db')
+    else:
+        return False
+
+    for i, v in enumerate(code_list):
+        # noinspection PyBroadException
+        try:
+            if target == 'statement':
+                crawler = CrawlFinanceStatement(v)
+            else:
+                crawler = CrawlFinanceRatio(v)
+            data = crawler.get_year_data()
+            Qdata = crawler.get_quarter_data()
+
+            if target == 'statement':
+                Pdata = crawler.get_price_info()
+                Fdata = crawler.get_fundamental()
+        except:
+            print(i, '/', code_list_length, ' failed')
+            continue
+
+        data.to_sql(v, con_db, if_exists='replace')
+        Qdata.to_sql(v, con_Qdb, if_exists='replace')
+        if target == 'statement':
+            Pdata.to_sql(v, con_Pdb, if_exists='replace')
+            Fdata.to_sql(v, con_Fdb, if_exists='replace')
+
+        print(i, '/', code_list_length, ' completed')
+
+    return True
+
+
 if __name__ == "__main__":
-    kospi_code_list = get_code_list()
-    code_list_length = len(kospi_code_list)
+    market = input('시장 구분을 영어로 입력해주세요 : ')
+    code_list = get_code_list(market)
+    code_list_length = len(code_list)
 
     # crawl statement
-    con_statementDB = sqlite3.connect('data/shorted_finance_statement.db')
-    con_QstatementDB = sqlite3.connect('data/quarter_finance_statement.db')
-    for i, v in enumerate(kospi_code_list):
-        # noinspection PyBroadException
-        try:
-            crawler = CrawlFinanceStatement(v)
-            data = crawler.get_year_data()
-            Qdata = crawler.get_quarter_data()
-        except:
-            print(i, '/', code_list_length, ' failed saving statement')
-            continue
-
-        data.to_sql(v, con_statementDB, if_exists='replace')
-        Qdata.to_sql(v, con_QstatementDB, if_exists='replace')
-
-        print(i, '/', code_list_length, ' completed saving statement')
-
-    print('done')
+    crawl('statement', code_list)
+    print('saving statement data done')
 
     # crawl ratio
-    con_ratioDB = sqlite3.connect('data/finance_ratio.db')
-    con_QratioDB = sqlite3.connect('data/quarter_finance_ratio.db')
-    for i, v in enumerate(kospi_code_list):
-        # noinspection PyBroadException
-        try:
-            crawler = CrawlFinanceRatio(v)
-            data = crawler.get_year_data()
-            Qdata = crawler.get_quarter_data()
-        except:
-            print(i, '/', code_list_length, ' failed saving ratio')
-            continue
-
-        data.to_sql(v, con_ratioDB, if_exists='replace')
-        Qdata.to_sql(v, con_QratioDB, if_exists='replace')
-
-        print(i, '/', code_list_length, ' completed saving ratio')
-
+    crawl('ratio', code_list)
     print('done')
+
+    driver.close()
