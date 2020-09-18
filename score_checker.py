@@ -7,10 +7,9 @@ class Checker:
         self.kospi_codes = self.get_code_list('kospi')
         self.kosdaq_codes = self.get_code_list('kosdaq')
 
-        self.con_statementDB = sqlite3.connect('data/shorted_finance_statement.db')
+        self.con_statementDB = sqlite3.connect('data/quarter_finance_statement.db')
         self.con_ratioDB = sqlite3.connect('data/finance_ratio.db')
         self.con_priceDB = sqlite3.connect('data/price_info.db')
-        self.con_fundamentalDB = sqlite3.connect('data/fundamental.db')
 
     @staticmethod
     def get_code_list(market):
@@ -47,16 +46,19 @@ class Checker:
 
         return gross_margin / total_assets
 
-    def get_pbr(self, Fdata):
-        return float(Fdata[Fdata.columns[1]][1])
+    def get_pbr(self, Sdata):
+        return float(Sdata[Sdata.columns[3]][28])
 
-    def get_per(self, Fdata):
-        per = Fdata[Fdata.columns[1]][0]
+    def get_per(self, Sdata):
+        per = Sdata[Sdata.columns[3]][26]
 
         if per is None:
             return None
         else:
             return float(per)
+
+    def get_1Y_yield(self, Pdata):
+        return float(Pdata['1'][8].split()[3].replace('%', ''))
 
     def get_current_price(self, Pdata):
         return Pdata[Pdata.columns[1]][0].split()[0].replace('원', '').replace(',', '')
@@ -68,19 +70,21 @@ class Checker:
         # noinspection PyBroadException
         try:
             if target == 'f-score':
-                return self.get_f_score(args[0], args[1])  # Sdata, Rdata
+                return self.get_f_score(*args)  # Sdata, Rdata
             elif target == 'market_cap':
-                return self.get_market_cap(args[0])  # Pdata
+                return self.get_market_cap(*args)  # Pdata
             elif target == 'gpa':
-                return self.get_gpa(args[0])  # Rdata
+                return self.get_gpa(*args)  # Rdata
             elif target == 'pbr':
-                return self.get_pbr(args[0])  # Fdata
+                return self.get_pbr(*args)  # Fdata
             elif target == 'per':
-                return self.get_per(args[0])  # Fdata
+                return self.get_per(*args)  # Fdata
             elif target == 'current_price':
-                return self.get_current_price(args[0])  # Pdata
+                return self.get_current_price(*args)  # Pdata
             elif target == 'psr':
-                return self.get_psr(args[0], args[1])  # market_cap, Sdata
+                return self.get_psr(*args)  # market_cap, Sdata
+            elif target == 'yield_1Y':
+                return self.get_1Y_yield(*args)  # Pdata
             else:
                 return None
         except:
@@ -90,7 +94,7 @@ class Checker:
         print(self.kospi_codes)
 
         temp_dict = {'code': [], '시장구분': [], 'f-score': [], '시가총액': [], 'GP/A': [], 'PBR': [], 'PER': [],
-                     '현재가': [], 'PSR': []}
+                     '현재가': [], 'PSR': [], '1년 수익률': []}
         df = pd.DataFrame(temp_dict)
 
         index = 0
@@ -100,9 +104,6 @@ class Checker:
                 Pdata = pd.read_sql('SELECT * FROM "%s"' % code, self.con_priceDB)
                 Pdata = Pdata.drop(Pdata.columns[0], axis=1)
 
-                Fdata = pd.read_sql('SELECT * FROM "%s"' % code, self.con_fundamentalDB)
-                Fdata = Fdata.drop(Fdata.columns[0], axis=1)
-
                 Sdata = pd.read_sql('SELECT * FROM "%s"' % code, self.con_statementDB)
                 Rdata = pd.read_sql('SELECT * FROM "%s"' % code, self.con_ratioDB)
             except:
@@ -111,18 +112,19 @@ class Checker:
             f_score = self.get_data('f-score', Sdata, Rdata)
             market_cap = self.get_data('market_cap', Pdata)
             gpa = self.get_data('gpa', Rdata)
-            pbr = self.get_data('pbr', Fdata)
-            per = self.get_data('per', Fdata)
+            pbr = self.get_data('pbr', Sdata)
+            per = self.get_data('per', Sdata)
             current_price = self.get_data('current_price', Pdata)
             psr = self.get_data('psr', market_cap, Sdata)
+            yield_1Y = self.get_data('yield_1Y', Pdata)
 
-            temp = [code, 'kospi', f_score, market_cap, gpa, pbr, per, current_price, psr]
+            temp = [code, 'kospi', f_score, market_cap, gpa, pbr, per, current_price, psr, yield_1Y]
             df.loc[i] = temp
             index += 1
 
             print(i, '/', len(self.kospi_codes), '\tmarket : kospi', '\tf_score : ', f_score,
                   '\tmarket_cap : ', market_cap, '\tgpa : ', gpa, '\tpbr : ', pbr, '\tper : ', per,
-                  '\tcurrent_price : ', current_price, '\tpsr: ', psr)
+                  '\tcurrent_price : ', current_price, '\tpsr: ', psr, '\tyield_1Y', yield_1Y)
 
         print(len(df))
 
@@ -132,9 +134,6 @@ class Checker:
                 Pdata = pd.read_sql('SELECT * FROM "%s"' % code, self.con_priceDB)
                 Pdata = Pdata.drop(Pdata.columns[0], axis=1)
 
-                Fdata = pd.read_sql('SELECT * FROM "%s"' % code, self.con_fundamentalDB)
-                Fdata = Fdata.drop(Fdata.columns[0], axis=1)
-
                 Sdata = pd.read_sql('SELECT * FROM "%s"' % code, self.con_statementDB)
                 Rdata = pd.read_sql('SELECT * FROM "%s"' % code, self.con_ratioDB)
             except:
@@ -143,18 +142,19 @@ class Checker:
             f_score = self.get_data('f-score', Sdata, Rdata)
             market_cap = self.get_data('market_cap', Pdata)
             gpa = self.get_data('gpa', Rdata)
-            pbr = self.get_data('pbr', Fdata)
-            per = self.get_data('per', Fdata)
+            pbr = self.get_data('pbr', Sdata)
+            per = self.get_data('per', Sdata)
             current_price = self.get_data('current_price', Pdata)
             psr = self.get_data('psr', market_cap, Sdata)
+            yield_1Y = self.get_data('yield_1Y', Pdata)
 
-            temp = [code, 'kosdaq', f_score, market_cap, gpa, pbr, per, current_price, psr]
+            temp = [code, 'kosdaq', f_score, market_cap, gpa, pbr, per, current_price, psr, yield_1Y]
             df.loc[i + index] = temp
             index += 1
 
             print(i, '/', len(self.kosdaq_codes), '\tmarket : kosdaq', '\tf_score : ', f_score,
                   '\tmarket_cap : ', market_cap, '\tgpa : ', gpa, '\tpbr : ', pbr, '\tper : ', per,
-                  '\tcurrent_price : ', current_price, '\tpsr : ', psr)
+                  '\tcurrent_price : ', current_price, '\tpsr : ', psr, '\tyield_1Y', yield_1Y)
 
         print(df)
         print(len(df))
