@@ -7,6 +7,8 @@ import pandas as pd
 import sqlite3
 
 TR_REQ_TIME_INTERVAL = 0.2
+MARKET_KOSPI = 0
+MARKET_KOSDAQ = 10
 
 
 class Kiwoom(QAxWidget):
@@ -14,6 +16,20 @@ class Kiwoom(QAxWidget):
         super().__init__()
         self._create_kiwoom_instance()
         self._set_signal_slots()
+
+    def get_code_list(self):
+        self.kospi_codes = self.kiwoom.get_code_list_by_market(MARKET_KOSPI)
+        self.kosdaq_codes = self.kiwoom.get_code_list_by_market(MARKET_KOSDAQ)
+
+        f = open('data/kospi_code_list.txt', 'w', encoding="UTF-8")
+        for i in self.kospi_codes:
+            f.write(i + ' ')
+        f.close()
+
+        f = open('data/kosdaq_code_list.txt', 'w', encoding="UTF-8")
+        for i in self.kosdaq_codes:
+            f.write(i + ' ')
+        f.close()
 
     def _create_kiwoom_instance(self):
         self.setControl("KHOPENAPI.KHOpenAPICtrl.1")
@@ -71,8 +87,8 @@ class Kiwoom(QAxWidget):
         return ret
 
     def send_order(self, rqname, screen_no, acc_no, order_type, code, quantity, price, hoga, order_no):
-        self.dynamicCall("SendOrder(QString, QString, QString, int, QString, int, int, QString, QString)",
-                         [rqname, screen_no, acc_no, order_type, code, quantity, price, hoga, order_no])
+        return self.dynamicCall("SendOrder(QString, QString, QString, int, QString, int, int, QString, QString)",
+                                [rqname, screen_no, acc_no, order_type, code, quantity, price, hoga, order_no])
 
     def get_chejan_data(self, fid):
         ret = self.dynamicCall("GetChejanData(int)", fid)
@@ -146,7 +162,6 @@ class Kiwoom(QAxWidget):
     # 주식기본정보요청
     def _opt10001(self, rqname, trcode):
         self.set_input_value()
-
 
     def _opt10081(self, rqname, trcode):
         data_cnt = self._get_repeat_cnt(trcode, rqname)
