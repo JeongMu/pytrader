@@ -4,6 +4,8 @@ from PyQt5.QtCore import *
 from PyQt5 import uic
 from Kiwoom import *
 import time
+import datetime
+import pymon
 
 form_class = uic.loadUiType("pytrader.ui")[0]
 
@@ -59,9 +61,10 @@ class MyWindow(QMainWindow, form_class):
 
     def timeout(self):
         market_start_time = QTime(9, 0, 0)
+        market_end_time = QTime(15, 30, 0)
         current_time = QTime.currentTime()
 
-        if current_time > market_start_time and self.trade_stocks_done is False:
+        if (market_start_time < current_time < market_end_time) and self.trade_stocks_done is False:
             self.trade_stocks()
             self.trade_stocks_done = True
 
@@ -171,6 +174,9 @@ class MyWindow(QMainWindow, form_class):
 
         account = self.comboBox.currentText()
 
+        suc_buy = []
+        suc_sell = []
+
         # buy list
         for row_data in buy_list:
             split_row_data = row_data.split(';')
@@ -180,7 +186,9 @@ class MyWindow(QMainWindow, form_class):
             price = split_row_data[4]
 
             if split_row_data[-1].rstrip() == '매수전':
-                self.kiwoom.send_order("send_order_req", "0101", account, 1, code, num, price, hoga_lookup[hoga], "")
+                suc_buy.append(self.kiwoom.send_order("send_order_req", "0101", account, 1, code,
+                                                      num, price, hoga_lookup[hoga], ""))
+                time.sleep(0.2)
 
         # sell list
         for row_data in sell_list:
@@ -191,11 +199,14 @@ class MyWindow(QMainWindow, form_class):
             price = split_row_data[4]
 
             if split_row_data[-1].rstrip() == '매도전':
-                self.kiwoom.send_order("send_order_req", "0101", account, 2, code, num, price, hoga_lookup[hoga], "")
+                suc_sell.append(self.kiwoom.send_order("send_order_req", "0101", account, 2, code,
+                                                       num, price, hoga_lookup[hoga], ""))
+                time.sleep(0.2)
 
         # buy list
         for i, row_data in enumerate(buy_list):
-            buy_list[i] = buy_list[i].replace("매수전", "주문완료")
+            if suc_buy[i] == 0:
+                buy_list[i] = buy_list[i].replace("매수전", "주문완료")
 
         # file update
         f = open("data/buy_list.txt", 'wt', encoding='UTF-8')
@@ -205,7 +216,8 @@ class MyWindow(QMainWindow, form_class):
 
         # sell list
         for i, row_data in enumerate(sell_list):
-            sell_list[i] = sell_list[i].replace("매도전", "주문완료")
+            if suc_sell[i] == 0:
+                sell_list[i] = sell_list[i].replace("매도전", "주문완료")
 
         # file update
         f = open("data/sell_list.txt", 'wt', encoding='UTF-8')
@@ -215,6 +227,9 @@ class MyWindow(QMainWindow, form_class):
 
 
 if __name__ == "__main__":
+    pymon = pymon.PyMon()
+    pymon.run()
+
     app = QApplication(sys.argv)
     myWindow = MyWindow()
     myWindow.show()
