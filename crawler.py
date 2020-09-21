@@ -90,7 +90,7 @@ class CrawlFinanceRatio(CrawlData):
 
 
 def get_code_list(market):
-    f = open('data/%s_code_list.txt' % market, 'r', encoding="UTF-8")
+    f = open('data/%s_code_list.txt' % market)
     return f.readline().split()
 
 
@@ -135,6 +135,7 @@ def crawl(target, code_list):
 
 
 if __name__ == "__main__":
+
     market = input('시장 구분을 영어로 입력해주세요 : ')
     code_list = get_code_list(market)
     code_list_length = len(code_list)
