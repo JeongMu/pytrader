@@ -102,7 +102,6 @@ class MyWindow(QMainWindow, form_class):
         # balance
         item = QTableWidgetItem(self.kiwoom.d2_deposit)
         item.setTextAlignment(Qt.AlignVCenter | Qt.AlignRight)
-        print(item)
         self.tableWidget.setItem(0, 0, item)
 
         for i in range(1, 6):
@@ -124,6 +123,8 @@ class MyWindow(QMainWindow, form_class):
                 self.tableWidget_2.setItem(j, i, item)
 
         self.tableWidget_2.resizeRowsToContents()
+
+        self.load_buy_sell_list()
 
     def load_buy_sell_list(self):
         f = open("data/buy_list.txt", 'rt', encoding='UTF-8')
