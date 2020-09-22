@@ -5,7 +5,6 @@ from PyQt5 import uic
 from Kiwoom import *
 import time
 import datetime
-import pymon
 
 form_class = uic.loadUiType("pytrader.ui")[0]
 
@@ -103,6 +102,7 @@ class MyWindow(QMainWindow, form_class):
         # balance
         item = QTableWidgetItem(self.kiwoom.d2_deposit)
         item.setTextAlignment(Qt.AlignVCenter | Qt.AlignRight)
+        print(item)
         self.tableWidget.setItem(0, 0, item)
 
         for i in range(1, 6):
@@ -189,6 +189,8 @@ class MyWindow(QMainWindow, form_class):
                 suc_buy.append(self.kiwoom.send_order("send_order_req", "0101", account, 1, code,
                                                       num, price, hoga_lookup[hoga], ""))
                 time.sleep(0.2)
+            else:
+                suc_buy.append(None)
 
         # sell list
         for row_data in sell_list:
@@ -202,6 +204,8 @@ class MyWindow(QMainWindow, form_class):
                 suc_sell.append(self.kiwoom.send_order("send_order_req", "0101", account, 2, code,
                                                        num, price, hoga_lookup[hoga], ""))
                 time.sleep(0.2)
+            else:
+                suc_sell.append(None)
 
         # buy list
         for i, row_data in enumerate(buy_list):
@@ -227,9 +231,6 @@ class MyWindow(QMainWindow, form_class):
 
 
 if __name__ == "__main__":
-    pymon = pymon.PyMon()
-    pymon.run()
-
     app = QApplication(sys.argv)
     myWindow = MyWindow()
     myWindow.show()
