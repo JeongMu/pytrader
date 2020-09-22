@@ -1,104 +1,125 @@
 import sys
 from PyQt5.QtWidgets import *
-import Kiwoom
-import time
-from pandas import DataFrame
 import pandas as pd
-import datetime
 import sqlite3
-
-MARKET_KOSPI = 0
-MARKET_KOSDAQ = 10
+import score_checker
 
 
 class PyMon:
     def __init__(self):
-        self.kiwoom = Kiwoom.Kiwoom()
-        self.kiwoom.comm_connect()
-        self.get_code_list()
+        self.kospi_codes = None
+        self.kosdaq_codes = None
 
         self.con_statementDB = sqlite3.connect('data/shorted_finance_statement.db')
         self.con_ratioDB = sqlite3.connect('data/finance_ratio.db')
 
-    def get_code_list(self):
-        self.kospi_codes = self.kiwoom.get_code_list_by_market(MARKET_KOSPI)
-        self.kosdaq_codes = self.kiwoom.get_code_list_by_market(MARKET_KOSDAQ)
+        self.score_data = pd.read_excel('data/score.xlsx')
+        self.buy_list_dataset = None
+        self.buy_list = []
+        self.sell_list = []
 
-        f = open('data/kospi_code_list.txt', 'w', encoding="UTF-8")
-        for i in self.kospi_codes:
-            f.write(i + ' ')
-        f.close()
+        f = open('data/portfolio.txt', 'r', encoding="UTF-8")
+        self.portfolio = f.readline().split()
 
-        f = open('data/kosdaq_code_list.txt', 'w', encoding="UTF-8")
-        for i in self.kosdaq_codes:
-            f.write(i + ' ')
-        f.close()
+        self.set_buy_list_by_svm()
+        self.set_sell_list_by_svm()
+
+    def check_f_score(self, score_data, target_score):
+        for i in score_data.loc:
+            return None
+
+    def set_buy_list_by_svm(self):
+        dataset = self.get_clean_data()
+
+        get_total_score = lambda data_list: data_list[0] - data_list[1] - data_list[2] - data_list[3]
+
+        col_total_score = list(
+            map(get_total_score, zip(*[dataset['GP/A'], dataset['PBR'], dataset['PER'], dataset['PSR']])))
+
+        dataset['total_score'] = col_total_score
+        dataset = dataset.sort_values(by=['total_score'], axis=0, ascending=False)
+
+        self.buy_list_dataset = dataset[:50]
+
+        fixed_buy_list = self.buy_list_dataset[self.buy_list_dataset['1년 수익률'] > 0]
+
+        if len(fixed_buy_list) / len(self.buy_list_dataset) <= 0.25:
+            temp_dict = {'code': [], '시장구분': [], 'f-score': [], '시가총액': [], 'GP/A': [], 'PBR': [], 'PER': [],
+                         '현재가': [], 'PSR': [], '1년 수익률': []}
+
+            fixed_buy_list = pd.DataFrame(temp_dict)
+
+        buy_list = list(fixed_buy_list['code'])
+
+        for code in buy_list:
+            if code in self.portfolio:
+                continue
+            else:
+                self.portfolio.append(code)
+                self.buy_list.append(code)
+
+    def set_sell_list_by_svm(self):
+        for code in self.portfolio:
+            if not(code in self.buy_list):
+                self.portfolio.remove(code)
+                self.sell_list.append(code)
 
     # 매수 리스트 업데이트
-    def update_buy_list(self, buy_list):
+    def update_buy_list(self):
         f = open("data/buy_list.txt", "wt", encoding="UTF-8")
-        for code in buy_list:
+        for code in self.buy_list:
             f.writelines("매수;" + code + ";시장가;10;0;매수전\n")
         f.close()
 
-    def check_f_score(self, code):
+    def update_sell_list(self):
+        f = open("data/sell_list.txt", "wt", encoding="UTF-8")
+        for code in self.sell_list:
+            f.writelines("매도;" + code + ";시장가;10;0;매도전\n")
+        f.close()
 
-        ys_data = pd.read_sql('SELECT * FROM "%s"' % code, self.con_statementDB)
-        ys_data.set_index(ys_data.columns[0], drop=True, inplace=True)
+    def update_portfolio(self):
+        f = open("data/portfolio.txt", "wt", encoding="UTF-8")
+        for code in self.portfolio:
+            f.write(code + ' ')
+        f.close()
 
-        yr_data = pd.read_sql('SELECT * FROM "%s"' % code, self.con_ratioDB)
-        yr_data.set_index(yr_data.columns[0], drop=True, inplace=True)
+    @staticmethod
+    def normalization(column):
+        col_max = column.max()
+        col_min = column.min()
+        column = [(x - col_min) / (col_max - col_min) for x in column]
 
-        f_score = 0
+        return column
 
-        if ys_data[ys_data.columns[2]]['당기순이익'] > 0:
-            f_score += 1
-        if ys_data[ys_data.columns[2]]['영업활동현금흐름'] > 0:
-            f_score += 1
-        if ys_data[ys_data.columns[2]]['ROA(%)'] > ys_data[ys_data.columns[1]]['ROA(%)']:
-            f_score += 1
-        if ys_data[ys_data.columns[2]]['영업활동현금흐름'] > ys_data[ys_data.columns[2]]['당기순이익']:
-            f_score += 1
-        if ys_data[ys_data.columns[2]]['부채비율'] < ys_data[ys_data.columns[1]]['부채비율']:
-            f_score += 1
-        if yr_data[yr_data.columns[3]]['유동비율계산에 참여한 계정 펼치기'] > yr_data[yr_data.columns[2]]['유동비율계산에 참여한 계정 펼치기']:
-            f_score += 1
-        if ys_data[ys_data.columns[2]]['발행주식수(보통주)'] <= ys_data[ys_data.columns[1]]['발행주식수(보통주)']:
-            f_score += 1
-        if yr_data[yr_data.columns[3]]['총자산회전율계산에 참여한 계정 펼치기'] > yr_data[yr_data.columns[2]]['총자산회전율계산에 참여한 계정 펼치기']:
-            f_score += 1
+    def get_clean_data(self):
+        dataset = self.score_data.copy()
 
-        return f_score
+        # cleaning dataset
+        dataset = dataset.sort_values(by=['시가총액'], axis=0)
+        dataset = dataset[:round(len(dataset) * 0.2) + 1]  # 시가총액 하위 20%만 추출
+        dataset.dropna(axis=0, inplace=True)  # NaN값이 있는 행 제거
 
-    def run(self, f_target):
-        buy_list = []
-        print(self.kospi_codes)
+        dataset = dataset[dataset['PER'] < 200]
+        dataset = dataset[dataset['PBR'] < 5]
+        dataset = dataset[dataset['PSR'] < 50]
 
-        for i, code in enumerate(self.kospi_codes):
+        dataset['GP/A'] = self.normalization(dataset['GP/A'])
+        dataset['PBR'] = self.normalization(dataset['PBR'])
+        dataset['PER'] = self.normalization(dataset['PER'])
+        dataset['PSR'] = self.normalization(dataset['PSR'])
 
-            f = open('data/result_data.txt', 'w', encoding="UTF-8")
-            f.write(str(i) + '\n')
+        return dataset
 
-            for j in buy_list:
-                f.write(j + ' ')
-            f.close()
+    def run(self):
+        checker = score_checker.Checker()
+        checker.run()
 
-            # noinspection PyBroadException
-            try:
-                f_score = self.check_f_score(code)
-            except:
-                print("exception occured")
-                continue
-
-            print(i, '/', '1564 f_score = %d' % f_score)
-
-            if f_score >= f_target:
-                buy_list.append(code)
-
-        self.update_buy_list(buy_list)
+        self.update_buy_list()
+        self.update_sell_list()
+        self.update_portfolio()
 
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     pymon = PyMon()
-    pymon.run(8)
+    pymon.run()

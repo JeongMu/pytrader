@@ -285,17 +285,12 @@
      <row/>
      <column>
       <property name="text">
-       <string>새 행</string>
+       <string>예수금 (d+2)</string>
       </property>
      </column>
      <column>
       <property name="text">
        <string>총매입</string>
-      </property>
-     </column>
-     <column>
-      <property name="text">
-       <string>새 행</string>
       </property>
      </column>
      <column>
@@ -306,6 +301,11 @@
      <column>
       <property name="text">
        <string>총손익</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>총수익률 (%)</string>
       </property>
      </column>
      <column>
@@ -330,11 +330,6 @@
      </column>
      <column>
       <property name="text">
-       <string>새 행</string>
-      </property>
-     </column>
-     <column>
-      <property name="text">
        <string>보유량</string>
       </property>
      </column>
@@ -346,6 +341,11 @@
      <column>
       <property name="text">
        <string>현재가</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>평가손익</string>
       </property>
      </column>
      <column>
@@ -412,11 +412,6 @@
      </column>
      <column>
       <property name="text">
-       <string>새 행</string>
-      </property>
-     </column>
-     <column>
-      <property name="text">
        <string>종목명</string>
       </property>
      </column>
@@ -428,6 +423,11 @@
      <column>
       <property name="text">
        <string>수량</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>가격</string>
       </property>
      </column>
      <column>
